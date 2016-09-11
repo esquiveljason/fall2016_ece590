@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+# ECE 590 HW2
 # File name: foo.py
 # Author: Jason Esquivel
 # Date created: 9/11/2016
