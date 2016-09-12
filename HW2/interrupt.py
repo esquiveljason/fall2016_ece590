@@ -5,9 +5,9 @@
 # Author: Jason Esquivel
 # Date Created: 9/12/2016
 
-# NonBlocking Real Time
+# Interrupt  Real Time
 
-import time
+import signal
 from foo import *
 
 
