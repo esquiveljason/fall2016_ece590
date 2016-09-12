@@ -12,5 +12,3 @@ def foo():
 	current_date_time = datetime.datetime.today()
 	print current_date_time
 
-
-foo()
