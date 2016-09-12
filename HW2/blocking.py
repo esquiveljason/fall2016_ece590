@@ -26,15 +26,16 @@ def blockingLoop():
 		t1 = time.time()
 		dt = t1-t0
 		
-		#blocking loop
-		while (0 < (loopTime - dt)):
-			dt = time.time()-t0 
-		
+		#print dt every sec
 		loopCounter += 1
 		if(loopCounter % 5 == 0):
 			print "dt = " + str(dt)
 
-
+		#blocking loop
+		while (0 < (loopTime - dt)):
+			dt = time.time()-t0 
+		
+		
 blockingLoop()
 
 
