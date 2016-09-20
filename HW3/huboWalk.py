@@ -35,6 +35,31 @@ import sys
 import time
 from ctypes import *
 
+def crouch(ref, r):
+	ref.ref[ha.RHP] = -.4
+	ref.ref[ha.LHP] = -.4
+	
+	ref.ref[ha.RKN] = .7
+	ref.ref[ha.LKN] = .7
+	
+	ref.ref[ha.RAP] = -.35
+	ref.ref[ha.LAP] = -.35
+
+	# Write to the feed-forward channel
+	r.put(ref)
+	
+	return
+
+def simSleep(sec, s, state):
+	tick = state.time;
+	dt = 0;
+	while(dt <= sec):
+		s.get(state, wait=False, last=True)
+		dt = state.time - tick;
+	print "State time = ", state.time
+	return
+
+
 # Open Hubo-Ach feed-forward and feed-back (reference and state) channels
 s = ach.Channel(ha.HUBO_CHAN_STATE_NAME)
 #r = ach.Channel("hubo-ref-filter")
@@ -48,25 +73,23 @@ state = ha.HUBO_STATE()
 # feed-back will now be refered to as "ref"
 ref = ha.HUBO_REF()
 
-i = 0;
-
 while(True):
 	# Get the current feed-forward (state) 
 	[statuss, framesizes] = s.get(state, wait=False, last=True)
 	
-	#Set Left Elbow Bend (LEB) and Right Shoulder Pitch (RSP) to  -0.2 rad and 0.1 rad respectively
-	ref.ref[ha.LSP] = i*0.05;
-	ref.ref[ha.RSP] = -i*0.04;
-
-	# Write to the feed-forward channel
-	r.put(ref)
-	time.sleep(2)
+	crouch(ref,r)
 	print "Joint LSP = ", state.joint[ha.LSP].pos
 	print "Joint RSP = ", state.joint[ha.RSP].pos
-	#simSleep(T) # create this function
-	i+=1;
+	
+	simSleep(.5, s, state)
 
 # Close the connection to the channels
 r.close()
 s.close()
+
+
+
+
+
+	
 
