@@ -36,8 +36,8 @@ import time
 from ctypes import *
 
 def crouch(ref, r):
-	ref.ref[ha.RHP] = -.4
-	ref.ref[ha.LHP] = -.4
+	ref.ref[ha.RHP] = -.55
+	ref.ref[ha.LHP] = -.55
 	
 	ref.ref[ha.RKN] = .7
 	ref.ref[ha.LKN] = .7
@@ -49,6 +49,15 @@ def crouch(ref, r):
 	r.put(ref)
 	
 	return
+
+def lean(ref,r):
+	ref.ref[ha.RHR] = 0.1
+	ref.ref[ha.LHR] = 0.1
+	
+	#ref.ref[ha.RAR] = -.1
+	#ref.ref[ha.LAR] = -.1
+
+	r.put(ref)
 
 def simSleep(sec, s, state):
 	tick = state.time;
@@ -73,15 +82,17 @@ state = ha.HUBO_STATE()
 # feed-back will now be refered to as "ref"
 ref = ha.HUBO_REF()
 
-while(True):
+#while(True):
 	# Get the current feed-forward (state) 
-	[statuss, framesizes] = s.get(state, wait=False, last=True)
+[statuss, framesizes] = s.get(state, wait=False, last=True)
 	
-	crouch(ref,r)
-	print "Joint LSP = ", state.joint[ha.LSP].pos
-	print "Joint RSP = ", state.joint[ha.RSP].pos
-	
-	simSleep(.5, s, state)
+lean(ref,r)
+
+simSleep(.5, s, state)
+
+crouch(ref,r)
+
+simSleep(.5, s, state)
 
 # Close the connection to the channels
 r.close()
