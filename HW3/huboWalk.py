@@ -36,8 +36,8 @@ import time
 from ctypes import *
 
 def crouch(ref, r):
-	ref.ref[ha.RHP] = -.55
-	ref.ref[ha.LHP] = -.55
+	ref.ref[ha.RHP] = -.54
+	ref.ref[ha.LHP] = -.54
 	
 	ref.ref[ha.RKN] = .7
 	ref.ref[ha.LKN] = .7
@@ -50,7 +50,7 @@ def crouch(ref, r):
 	
 	return
 
-def lean(ref,r):
+def leanRight(ref,r):
 	ref.ref[ha.RHR] = 0.1
 	ref.ref[ha.LHR] = 0.1
 	
@@ -59,14 +59,21 @@ def lean(ref,r):
 
 	r.put(ref)
 
+def liftLeftLeg(ref,r):
+	ref.ref[ha.LKN] = 1.5
+	
+	r.put(ref)
+
+
 def simSleep(sec, s, state):
 	tick = state.time;
 	dt = 0;
 	while(dt <= sec):
 		s.get(state, wait=False, last=True)
 		dt = state.time - tick;
-	print "State time = ", state.time
 	return
+
+
 
 
 # Open Hubo-Ach feed-forward and feed-back (reference and state) channels
@@ -86,13 +93,19 @@ ref = ha.HUBO_REF()
 	# Get the current feed-forward (state) 
 [statuss, framesizes] = s.get(state, wait=False, last=True)
 	
-lean(ref,r)
+leanRight(ref,r)
+print state.time , "Lean right"
 
 simSleep(.5, s, state)
 
 crouch(ref,r)
+print state.time , "Crouch"
 
 simSleep(.5, s, state)
+
+#liftLeftLeg(ref,r)
+
+simSleep(2, s, state)
 
 # Close the connection to the channels
 r.close()
