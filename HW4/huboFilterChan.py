@@ -35,12 +35,21 @@ import sys
 import time
 from ctypes import *
 
+STEP_SIZE        = 0.0872665 # 5 deg step size
+FILTER_SLEEP_SEC = 0.25      # filter sleep
+
+def simSleep(sec, s, state):
+	tick = state.time;
+	dt = 0;
+	while(dt <= sec):
+		s.get(state, wait=False, last=True)
+		dt = state.time - tick;
+	return
+
 # Open Hubo-Ach feed-forward and feed-back (reference and state) channels
 s = ach.Channel(ha.HUBO_CHAN_STATE_NAME)
 f = ach.Channel("huboFilterChan")
 r = ach.Channel(ha.HUBO_CHAN_REF_NAME)
-#s.flush()
-#r.flush()
 
 # feed-forward will now be refered to as "state"
 state = ha.HUBO_STATE()
@@ -48,21 +57,42 @@ state = ha.HUBO_STATE()
 # feed-back will now be refered to as "ref"
 ref = ha.HUBO_REF()
 refFilter = ha.HUBO_REF()
-print("before while")
+
+jointDiff = [0] * ha.HUBO_JOINT_COUNT
+jointDone = [0] * ha.HUBO_JOINT_COUNT
+
 
 while(True):
 	# Get the current feed-forward (state) 
-	[statuss, framesizes] = f.get(refFilter, wait=False, last=True)
 
-	for i in range(ha.HUBO_JOINT_COUNT):
-		ref.ref[i] = refFilter.ref[i]		
-		#ref.ref[i] = doFilter(i, refFilter.ref[i])
+	[statuss, framesizes] = f.get(refFilter, wait=False, last=True)
+	if(statuss == 0):
+		print "*** NEW COMMANDS ***"
+		jointDone = [0] * ha.HUBO_JOINT_COUNT
+
+	while(sum(jointDone) != ha.HUBO_JOINT_COUNT):
+		
+		s.get(state, wait=False, last=True)
+
+		for i in range(ha.HUBO_JOINT_COUNT):
+			jointDiff[i] = refFilter.ref[i] - state.joint[i].pos
+			if(abs(jointDiff[i] ) > STEP_SIZE):
+				if(jointDiff[i] > 0):
+					ref.ref[i] = state.joint[i].pos + STEP_SIZE
+				else:
+					ref.ref[i] = state.joint[i].pos - STEP_SIZE
+			else:
+				ref.ref[i] = refFilter.ref[i]
+				jointDone[i] = 1		
 	
-	# Write to the feed-forward channel
-	r.put(ref)
-	#simSleep(T) # create this function (step period of 2 seconds or slower)
-	
-	
+		# Write to the feed-forward channel
+		r.put(ref)
+		simSleep(FILTER_SLEEP_SEC, s, state ) # create this function (step period of 2 seconds or slower)
+
+		print "State time : " , state.time
+		print "Joint = " , state.joint[ha.RSP].pos
+		print "Joint = " , state.joint[ha.LSP].pos	
+
 # Close the connection to the channels
 r.close()
 s.close()
