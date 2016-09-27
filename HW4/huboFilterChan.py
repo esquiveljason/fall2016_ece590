@@ -35,8 +35,9 @@ import sys
 import time
 from ctypes import *
 
-STEP_SIZE        = 0.0872665 # 5 deg step size
-FILTER_SLEEP_SEC = 0.25      # filter sleep
+STEP_SIZE        = 0.088  # 5 deg step size
+NUM_STEPS	 = 10
+FILTER_SLEEP_SEC = 0.1      # filter sleep
 
 def simSleep(sec, s, state):
 	tick = state.time;
@@ -73,7 +74,7 @@ while(True):
 	while(sum(jointDone) != ha.HUBO_JOINT_COUNT):
 		
 		s.get(state, wait=False, last=True)
-
+		
 		for i in range(ha.HUBO_JOINT_COUNT):
 			jointDiff[i] = refFilter.ref[i] - state.joint[i].pos
 			if(abs(jointDiff[i] ) > STEP_SIZE):

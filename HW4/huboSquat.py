@@ -35,34 +35,56 @@ import sys
 import time
 from ctypes import *
 
-def crouch(ref, r):
-	ref.ref[ha.RHP] = -.54
-	ref.ref[ha.LHP] = -.54
+import math
+
+CROUCH_500_THETA1 = -1.1895
+CROUCH_500_THETA2 =  2.382111
+
+CROUCH_800_THETA1 = -.514577
+CROUCH_800_THETA2 = 1.029814
+
+CROUCH_800 = 0
+CROUCH_500 = 1
+
+CROUCH_DOWN = 0
+CROUCH_UP   = 1
+
+def inverseKinematics(x,y,d1,d2):
+	theta2 = math.acos((x*x+y*y-d1*d1-d2*d2)/(2.0*d1*d2))
+	theta1 = math.atan2(y*(d1+d2*math.cos(theta2)) - x*d2*math.sin(theta2) ,  x*(d1+d2*math.cos(theta2)) + y*d2*math.sin(theta2) )
+
+	theta1 = -1.0*(math.pi/2.0 - theta1)
+
+	print "theta1 = ", theta1
+	print "theta2 = ", theta2
+
+	return (theta1, theta2)
+
+def crouch(ref, r, up_down):
 	
-	ref.ref[ha.RKN] = .7
-	ref.ref[ha.LKN] = .7
+	if(up_down == CROUCH_DOWN):
+		x = 0
+		y = 222.5
+	else:
+		x = 0
+		y = 522.5
+
+	theta1, theta2 = inverseKinematics(x, y, 300, 300)
 	
-	ref.ref[ha.RAP] = -.35
-	ref.ref[ha.LAP] = -.35
+	ref.ref[ha.RKN] = theta2
+	ref.ref[ha.LKN] = theta2
+
+	ref.ref[ha.RHP] = theta1
+	ref.ref[ha.LHP] = theta1
+
+	
+	ref.ref[ha.RAP] = theta1
+	ref.ref[ha.LAP] = theta1 
 
 	# Write to the feed-forward channel
 	r.put(ref)
 	
 	return
-
-def leanRight(ref,r):
-	ref.ref[ha.RHR] = 0.1
-	ref.ref[ha.LHR] = 0.1
-	
-	#ref.ref[ha.RAR] = -.1
-	#ref.ref[ha.LAR] = -.1
-
-	r.put(ref)
-
-def liftLeftLeg(ref,r):
-	ref.ref[ha.LKN] = 1.5
-	
-	r.put(ref)
 
 
 def simSleep(sec, s, state):
@@ -78,10 +100,8 @@ def simSleep(sec, s, state):
 
 # Open Hubo-Ach feed-forward and feed-back (reference and state) channels
 s = ach.Channel(ha.HUBO_CHAN_STATE_NAME)
-#r = ach.Channel("hubo-ref-filter")
+#r = ach.Channel("huboFilterChan")
 r = ach.Channel(ha.HUBO_CHAN_REF_NAME)
-#s.flush()
-#r.flush()
 
 # feed-forward will now be refered to as "state"
 state = ha.HUBO_STATE()
@@ -93,20 +113,16 @@ ref = ha.HUBO_REF()
 	# Get the current feed-forward (state) 
 [statuss, framesizes] = s.get(state, wait=False, last=True)
 	
-leanRight(ref,r)
-print state.time , "Lean right"
 
-simSleep(.5, s, state)
+for i in range(4):
 
-crouch(ref,r)
-print state.time , "Crouch"
-
-simSleep(.5, s, state)
-
-#liftLeftLeg(ref,r)
-
-simSleep(2, s, state)
-
+	crouch(ref,r, CROUCH_DOWN)
+	
+	simSleep(2, s, state)
+	
+	crouch(ref, r, CROUCH_UP)
+	
+	simSleep(1, s, state)
 # Close the connection to the channels
 r.close()
 s.close()
