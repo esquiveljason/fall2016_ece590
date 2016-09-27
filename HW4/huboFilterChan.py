@@ -90,9 +90,7 @@ while(True):
 		r.put(ref)
 		#simSleep(FILTER_SLEEP_SEC, s, state ) # create this function (step period of 2 seconds or slower)
 
-		print "State time : " , state.time
-		print "Joint = " , state.joint[ha.RSP].pos
-		print "Joint = " , state.joint[ha.LSP].pos	
+		print "State time : " , state.time	
 
 # Close the connection to the channels
 r.close()

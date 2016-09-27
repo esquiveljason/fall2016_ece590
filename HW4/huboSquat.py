@@ -37,17 +37,18 @@ from ctypes import *
 
 import math
 
-CROUCH_500_THETA1 = -1.1895
-CROUCH_500_THETA2 =  2.382111
+SQUAT_DOWN = 0
+SQUAT_UP   = 1
 
-CROUCH_800_THETA1 = -.514577
-CROUCH_800_THETA2 = 1.029814
+LOWER_LEG_D1 = 300.38
+UPPER_LEG_D2 = 300.03
 
-CROUCH_800 = 0
-CROUCH_500 = 1
+SQUAT_DOWN_Y = 500.0 - 94.97 - (289.47 - 107.0)
+SQUAT_DOWN_X = 0.0
 
-CROUCH_DOWN = 0
-CROUCH_UP   = 1
+SQUAT_UP_Y   = 800.0 -94.97 - (289.47 - 107.0)
+SQUAT_UP_X   = 0.0
+
 
 def inverseKinematics(x,y,d1,d2):
 	theta2 = math.acos((x*x+y*y-d1*d1-d2*d2)/(2.0*d1*d2))
@@ -55,21 +56,21 @@ def inverseKinematics(x,y,d1,d2):
 
 	theta1 = -1.0*(math.pi/2.0 - theta1)
 
-	print "theta1 = ", theta1
-	print "theta2 = ", theta2
+	print "Theta1 (RAP,LAP,RHP,LHP) = ", theta1
+	print "Theta2 (RKN,LKN)         = ", theta2
 
 	return (theta1, theta2)
 
-def crouch(ref, r, up_down):
+def squat(ref, r, up_down):
 	
-	if(up_down == CROUCH_DOWN):
-		x = 0
-		y = 222.5
+	if(up_down == SQUAT_DOWN):
+		x = SQUAT_DOWN_X #0
+		y = SQUAT_DOWN_Y #222.5
 	else:
-		x = 0
-		y = 522.5
+		x = SQUAT_UP_X #0
+		y = SQUAT_UP_Y #522.5
 
-	theta1, theta2 = inverseKinematics(x, y, 300, 300)
+	theta1, theta2 = inverseKinematics(x, y, LOWER_LEG_D1, UPPER_LEG_D2)
 	
 	ref.ref[ha.RKN] = theta2
 	ref.ref[ha.LKN] = theta2
@@ -115,14 +116,22 @@ ref = ha.HUBO_REF()
 	
 
 for i in range(4):
+	
 
-	crouch(ref,r, CROUCH_UP)
+	print "\nSquat  waist to 0.8(m)"
+	squat(ref,r, SQUAT_UP)
 	
 	simSleep(.5, s, state)
 	
-	crouch(ref, r, CROUCH_DOWN)
+	print "\nSquat waist to 0.5(m)"
+	squat(ref, r, SQUAT_DOWN)
 	
 	simSleep(.5, s, state)
+
+print "\nSquat waist to 0.8(m)"
+squat(ref, r, SQUAT_UP)
+
+
 # Close the connection to the channels
 r.close()
 s.close()
