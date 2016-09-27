@@ -35,7 +35,7 @@ import sys
 import time
 from ctypes import *
 
-STEP_SIZE        = 0.088  # 5 deg step size
+STEP_SIZE        = 1.5 #50 deg step size
 NUM_STEPS	 = 10
 FILTER_SLEEP_SEC = 0.1      # filter sleep
 
@@ -88,7 +88,7 @@ while(True):
 	
 		# Write to the feed-forward channel
 		r.put(ref)
-		simSleep(FILTER_SLEEP_SEC, s, state ) # create this function (step period of 2 seconds or slower)
+		#simSleep(FILTER_SLEEP_SEC, s, state ) # create this function (step period of 2 seconds or slower)
 
 		print "State time : " , state.time
 		print "Joint = " , state.joint[ha.RSP].pos

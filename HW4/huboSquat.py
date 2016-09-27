@@ -100,8 +100,8 @@ def simSleep(sec, s, state):
 
 # Open Hubo-Ach feed-forward and feed-back (reference and state) channels
 s = ach.Channel(ha.HUBO_CHAN_STATE_NAME)
-#r = ach.Channel("huboFilterChan")
-r = ach.Channel(ha.HUBO_CHAN_REF_NAME)
+r = ach.Channel("huboFilterChan")
+#r = ach.Channel(ha.HUBO_CHAN_REF_NAME)
 
 # feed-forward will now be refered to as "state"
 state = ha.HUBO_STATE()
@@ -116,13 +116,13 @@ ref = ha.HUBO_REF()
 
 for i in range(4):
 
-	crouch(ref,r, CROUCH_DOWN)
+	crouch(ref,r, CROUCH_UP)
 	
-	simSleep(2, s, state)
+	simSleep(.5, s, state)
 	
-	crouch(ref, r, CROUCH_UP)
+	crouch(ref, r, CROUCH_DOWN)
 	
-	simSleep(1, s, state)
+	simSleep(.5, s, state)
 # Close the connection to the channels
 r.close()
 s.close()
