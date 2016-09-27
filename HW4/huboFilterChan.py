@@ -35,9 +35,9 @@ import sys
 import time
 from ctypes import *
 
-STEP_SIZE        = 1.5 #50 deg step size
+STEP_SIZE        = 0.75 #50 deg step size
 NUM_STEPS	 = 10
-FILTER_SLEEP_SEC = 0.1      # filter sleep
+FILTER_SLEEP_SEC = 0.01      # filter sleep
 
 def simSleep(sec, s, state):
 	tick = state.time;

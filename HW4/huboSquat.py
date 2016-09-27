@@ -37,18 +37,31 @@ from ctypes import *
 
 import math
 
+NUM_SQUATS = 4
+
 SQUAT_DOWN = 0
 SQUAT_UP   = 1
+SQUAT_MIDDLE = 2
 
 LOWER_LEG_D1 = 300.38
 UPPER_LEG_D2 = 300.03
 
-SQUAT_DOWN_Y = 500.0 - 94.97 - (289.47 - 107.0)
+SQUAT_DOWN_LENGTH_FROM_GROUND = 500.0
+SQUAT_UP_LENGTH_FROM_GROUND = 800.0
+SQUAT_MIDDLE_LENGTH_FROM_GROUND = 650.0
+
+ANKLE_LENGTH = 94.97
+HIP_TO_WAIST_LENGTH = 289.47 - 107.0
+
+SQUAT_DOWN_Y = SQUAT_DOWN_LENGTH_FROM_GROUND - ANKLE_LENGTH - HIP_TO_WAIST_LENGTH
 SQUAT_DOWN_X = 0.0
 
-SQUAT_UP_Y   = 800.0 -94.97 - (289.47 - 107.0)
+SQUAT_UP_Y   = SQUAT_UP_LENGTH_FROM_GROUND - ANKLE_LENGTH - HIP_TO_WAIST_LENGTH
 SQUAT_UP_X   = 0.0
 
+
+SQUAT_MIDDLE_Y = SQUAT_MIDDLE_LENGTH_FROM_GROUND - ANKLE_LENGTH - HIP_TO_WAIST_LENGTH
+SQUAT_MIDDLE_X = 0.0
 
 def inverseKinematics(x,y,d1,d2):
 	theta2 = math.acos((x*x+y*y-d1*d1-d2*d2)/(2.0*d1*d2))
@@ -66,12 +79,17 @@ def squat(ref, r, up_down):
 	if(up_down == SQUAT_DOWN):
 		x = SQUAT_DOWN_X #0
 		y = SQUAT_DOWN_Y #222.5
-	else:
+	elif(up_down == SQUAT_UP):
 		x = SQUAT_UP_X #0
 		y = SQUAT_UP_Y #522.5
+	elif(up_down == SQUAT_MIDDLE):
+		x = SQUAT_MIDDLE_X
+		y = SQUAT_MIDDLE_Y
+	
 
 	theta1, theta2 = inverseKinematics(x, y, LOWER_LEG_D1, UPPER_LEG_D2)
 	
+
 	ref.ref[ha.RKN] = theta2
 	ref.ref[ha.LKN] = theta2
 
@@ -115,18 +133,23 @@ ref = ha.HUBO_REF()
 [statuss, framesizes] = s.get(state, wait=False, last=True)
 	
 
-for i in range(4):
+for i in range(NUM_SQUATS):
 	
 
 	print "\nSquat  waist to 0.8(m)"
 	squat(ref,r, SQUAT_UP)
-	
+	simSleep(.5, s, state)
+
+	squat(ref,r, SQUAT_MIDDLE)
 	simSleep(.5, s, state)
 	
 	print "\nSquat waist to 0.5(m)"
 	squat(ref, r, SQUAT_DOWN)
-	
 	simSleep(.5, s, state)
+
+	squat(ref, r, SQUAT_MIDDLE)
+	simSleep(.5, s, state)
+	
 
 print "\nSquat waist to 0.8(m)"
 squat(ref, r, SQUAT_UP)
