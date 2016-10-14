@@ -42,7 +42,12 @@ import numpy as np
 LENGTH_BASE_TO_SHOULDER  = 214.5 - 120.0
 LENGTH_SHOULDER_TO_ELBOW = 179.14
 LENGTH_ELBOW_TO_WRIST    = 181.59
-LENGTH_WRIST_TO_FINGER   = 0.0
+LENGTH_WRIST_TO_FINGER   = 0.0 #placeholder
+
+#IK Constatns
+DELTA_THETA = 0.01
+ERROR       = 16 # PLACEHOLDER - ERROR FROM GOAL
+ENDEFF_STEP = 5 # PLACEHOLDER - STEP_SIZE
 
 def simSleep(sec, s, state):
 	tick = state.time;
@@ -54,7 +59,7 @@ def simSleep(sec, s, state):
 
 
 # Rotation matrices
-def rX(theta)
+def rX(theta):
 	R = np.identity(4)
 	R[1,1] = np.cos(theta)
 	R[1,2] = np.sin(theta) * -1.0
@@ -63,7 +68,7 @@ def rX(theta)
 	
 	return R
 
-def rY(theta)
+def rY(theta):
 	R = np.identity(4)
 	R[0,0] = np.cos(theta)
 	R[0,2] = np.sin(theta)
@@ -72,7 +77,7 @@ def rY(theta)
 
 	return R
 
-def rZ(theta)
+def rZ(theta):
 	R = np.identity(4)
 	R[0,0] = np.cos(theta)
 	R[0,1] = np.sin(theta) * -1.0
@@ -82,45 +87,124 @@ def rZ(theta)
 	return R
 
 
-def getFK(thetas) #theta0, theta1, theta2, ....
+def getFK(thetas): #theta0, theta1, theta2, ....
 	
 	#shoulder Pitch
 	T1 = np.identity(4)
 	T1[1,3] = LENGTH_BASE_TO_SHOULDER
-	Q1 = np.dot(rY(thetas[0]), T1)
+	Q1 = np.dot(rY(thetas[0,0]), T1)
 	
 	#shoulder Roll
 	T2 = np.identity(4)
-	T2 = T1
-	Q2 = np.dot(rX(thetas[1]), T2)
+	#T2[1,3] = LENGTH_BASE_TO_SHOULDER
+	Q2 = np.dot(rX(thetas[1,0]), T2)
 	
 	#shoulder Yaw
 	T3 = np.identity(4)
-	T3 = T1
-	Q3 = np.dot(rZ(thetas[2]), T3)
+	#T3[1,3] = LENGTH_BASE_TO_SHOULDER
+	Q3 = np.dot(rZ(thetas[2,0]), T3)
 	
 	#elbow Pitch
 	T4 = np.identity(4)
 	T4[2,3] = LENGTH_SHOULDER_TO_ELBOW * -1.0
-	Q4 = np.dot(rY(thetas[3]), T4)
+	Q4 = np.dot(rY(thetas[3,0]), T4)
 
 	#wrist Pitch
 	T5 = np.identity(4)
-	T5[2,3] = (LENGTH_ELBOW_TO_WRIST + LENGTH_WRIST_FINGER) * -1.0
-	Q5 = np.dot(ry(thetas[4], T5)
-
+	T5[2,3] = (LENGTH_ELBOW_TO_WRIST + LENGTH_WRIST_TO_FINGER) * -1.0
+	#Q5 = np.dot(rY(thetas[4,0]), T5)
+	Q5 = np.dot(rY(0.0), T5)
+	
 	Qend = np.dot(Q1, Q2)
 	Qend = np.dot(Qend, Q3)
 	Qend = np.dot(Qend, Q4)
 	Qend = np.dot(Qend, Q5)
 	
-	e = np.array([round(Qend[0,3],3), round(Qend[1,3],3), round(Qend[2,3],3)])
-	return e
+	endEff = np.array([[round(Qend[0,3],3)], [round(Qend[1,3],3)], [round(Qend[2,3],3)]])
+	
+	return endEff
 
+def getJacobian(thetas, deltaTheta):
+	Jac = np.zeros((3,5))
+	for i in range((np.shape(Jac))[0]): #3
+		for j in range((np.shape(Jac))[1]): #5
+			#print "********* ", i,j
+			newThetas = np.copy(thetas)
+			newThetas[j] = thetas[j] + deltaTheta		
+			newEndEff = getFK(newThetas)
+			#print newEndEff
+			Jac[i,j] = (newEndEff[i,0] )/ deltaTheta
+	return Jac
+
+def getDistance(endEff, goal):
+	m = math.sqrt(math.pow(endEff[0] - goal[0],2) + math.pow(endEff[1] - goal[1],2) + math.pow(endEff[2] - goal[2],2))
+	return m
+
+def getNext(endEff, goal, eStep, dist):
+	dx = (goal[0] - endEff[0]) * eStep / dist
+	dy = (goal[1] - endEff[1]) * eStep / dist
+	dz = (goal[2] - endEff[2]) * eStep / dist
+	
+	deltaEndEff = np.array([[round(dx,3)], [round(dy,3)], [round(dz,3)]])
+	
+	return deltaEndEff
+	
+def setArmThetas(thetas, ref, r):
+
+	ref.ref[ha.LSP] = thetas[0]
+	ref.ref[ha.LSR] = thetas[1]
+	ref.ref[ha.LSY] = thetas[2]
+	ref.ref[ha.LEB] = thetas[3]
+	ref.ref[ha.LWP] = thetas[4]
+
+	ref.ref[ha.RSP] = thetas[0]
+	ref.ref[ha.RSR] = thetas[1]
+	ref.ref[ha.RSY] = thetas[2]
+	ref.ref[ha.REB] = thetas[3]
+	ref.ref[ha.RWP] = thetas[4]
+
+	r.put(ref)
+
+def moveArm(thetaInit, goal, deltaTheta, eStep, error, ref, r):
+	print "Starting ...."
+	endEff = getFK(thetaInit)
+	thetas = np.copy(thetaInit)
+	dist = getDistance(endEff, goal)
+	orig_dist = dist
+	print "Goal    Position : ", goal.transpose()
+	print "Current Theta    : ", thetas.transpose()
+	print "Current Position : ", endEff.transpose()
+	print "Error Allowed : ", error, "Distance : ", dist
+	counter = 0
+	while(dist > error):
+		print "\n\nGoal    Position : ", goal.transpose()
+		Jac = getJacobian(thetas, deltaTheta)
+		invJac = np.linalg.pinv(Jac)
+
+		deltaEndEff = getNext(endEff, goal, eStep, orig_dist)
+		print "Increm  Position : ", deltaEndEff.transpose()
+
+		changeTheta = np.dot(invJac, deltaEndEff)
+		print "Change Theta     : ", changeTheta.transpose()
+
+		thetas = np.add(thetas, changeTheta)
+		print "New Thetas       : ", thetas.transpose()
+
+		endEff = getFK(thetas)
+		print "New Position : ", endEff.transpose()	
+		
+		dist = getDistance(endEff, goal)		
+		print "Error Allowed : ", error, "Distance : ", dist
+		counter = counter + 1
+	setArmThetas(thetas, ref, r)
+	print "Counter : ", counter
+	return thetas
+
+
+	
 
 # Open Hubo-Ach feed-forward and feed-back (reference and state) channels
 s = ach.Channel(ha.HUBO_CHAN_STATE_NAME)
-#r = ach.Channel("huboFilterChan")
 r = ach.Channel(ha.HUBO_CHAN_REF_NAME)
 
 # feed-forward will now be refered to as "state"
@@ -132,10 +216,13 @@ ref = ha.HUBO_REF()
 # Get the current feed-forward (state) 
 [statuss, framesizes] = s.get(state, wait=False, last=True)
 	
-ref.ref[ha.LSP] = -1.3
-ref.ref[ha.RSP] = -1.3
+thetaInit = np.zeros((5,1))
+goal = np.array([[361.73], [94.5], [0.0]])
+init = np.array([[0.0], [94.5], [-370.73]])
 
-r.put(ref)
+print moveArm(thetaInit, goal, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
+
+
 
 # Close the connection to the channels
 r.close()
