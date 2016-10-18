@@ -46,8 +46,8 @@ LENGTH_WRIST_TO_FINGER   = 0.0 #placeholder
 
 #IK Constatns
 DELTA_THETA = 0.01
-ERROR       = 16 # PLACEHOLDER - ERROR FROM GOAL
-ENDEFF_STEP = 5 # PLACEHOLDER - STEP_SIZE
+ERROR       = 4 # PLACEHOLDER - ERROR FROM GOAL
+ENDEFF_STEP = 2 # PLACEHOLDER - STEP_SIZE
 
 def simSleep(sec, s, state):
 	tick = state.time;
@@ -109,25 +109,31 @@ def getFK(thetas): #theta0, theta1, theta2, ....
 	T4[2,3] = LENGTH_SHOULDER_TO_ELBOW * -1.0
 	Q4 = np.dot(rY(thetas[3,0]), T4)
 
-	#wrist Pitch
+	#wrist Yaw
 	T5 = np.identity(4)
 	T5[2,3] = (LENGTH_ELBOW_TO_WRIST + LENGTH_WRIST_TO_FINGER) * -1.0
-	#Q5 = np.dot(rY(thetas[4,0]), T5)
-	Q5 = np.dot(rY(0.0), T5)
+	Q5 = np.dot(rZ(thetas[4,0]), T5)
+
+	#wrist roll
+	T6 = np.identity(4)
+	Q6 = np.dot(rX(thetas[5,0]), T6)
+	
+	#not using pitch
 	
 	Qend = np.dot(Q1, Q2)
 	Qend = np.dot(Qend, Q3)
 	Qend = np.dot(Qend, Q4)
 	Qend = np.dot(Qend, Q5)
+	Qend = np.dot(Qend, Q6)
 	
 	endEff = np.array([[round(Qend[0,3],3)], [round(Qend[1,3],3)], [round(Qend[2,3],3)]])
 	
 	return endEff
 
 def getJacobian(thetas, deltaTheta):
-	Jac = np.zeros((3,5))
+	Jac = np.zeros((3,6))
 	for i in range((np.shape(Jac))[0]): #3
-		for j in range((np.shape(Jac))[1]): #5
+		for j in range((np.shape(Jac))[1]): #6
 			#print "********* ", i,j
 			newThetas = np.copy(thetas)
 			newThetas[j] = thetas[j] + deltaTheta		
@@ -155,13 +161,15 @@ def setArmThetas(thetas, ref, r):
 	ref.ref[ha.LSR] = thetas[1]
 	ref.ref[ha.LSY] = thetas[2]
 	ref.ref[ha.LEB] = thetas[3]
-	ref.ref[ha.LWP] = thetas[4]
+	ref.ref[ha.LWY] = thetas[4]
+	ref.ref[ha.LWR] = thetas[5]
 
 	ref.ref[ha.RSP] = thetas[0]
 	ref.ref[ha.RSR] = thetas[1]
 	ref.ref[ha.RSY] = thetas[2]
 	ref.ref[ha.REB] = thetas[3]
-	ref.ref[ha.RWP] = thetas[4]
+	ref.ref[ha.RWY] = thetas[4]
+	ref.ref[ha.RWR] = thetas[5]
 
 	r.put(ref)
 
@@ -216,7 +224,7 @@ ref = ha.HUBO_REF()
 # Get the current feed-forward (state) 
 [statuss, framesizes] = s.get(state, wait=False, last=True)
 	
-thetaInit = np.zeros((5,1))
+thetaInit = np.zeros((6,1))
 goal = np.array([[361.73], [94.5], [0.0]])
 init = np.array([[0.0], [94.5], [-370.73]])
 
