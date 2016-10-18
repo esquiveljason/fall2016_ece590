@@ -47,7 +47,7 @@ LENGTH_WRIST_TO_FINGER   = 0.0 #placeholder
 #IK Constatns
 DELTA_THETA = 0.01
 ERROR       = 5 # PLACEHOLDER - ERROR FROM GOAL
-ENDEFF_STEP = 2 # PLACEHOLDER - STEP_SIZE
+ENDEFF_STEP = 4 # PLACEHOLDER - STEP_SIZE
 
 #GOALS
 GOAL_X_OFFSET = 10.09298
@@ -183,13 +183,13 @@ def setArmThetas(thetas, ref, r):
 	r.put(ref)
 
 def moveArm(thetaInit, goal, deltaTheta, eStep, error, ref, r):
-	print "Starting ...."
+
 	endEff = getFK(thetaInit)
 	thetas = np.copy(thetaInit)
 	dist = getDistance(endEff, goal)
 	orig_dist = dist
 	print "Goal    Position : ", goal.transpose()
-	print "Current Theta    : ", thetas.transpose()
+	#print "Current Theta    : ", thetas.transpose()
 	print "Current Position : ", endEff.transpose()
 	print "Error Allowed : ", error, "Distance : ", dist
 	counter = 0
@@ -199,13 +199,13 @@ def moveArm(thetaInit, goal, deltaTheta, eStep, error, ref, r):
 		invJac = np.linalg.pinv(Jac)
 
 		deltaEndEff = getNext(endEff, goal, eStep, orig_dist)
-		print "Increm  Position : ", deltaEndEff.transpose()
+		#print "Increm  Position : ", deltaEndEff.transpose()
 
 		changeTheta = np.dot(invJac, deltaEndEff)
-		print "Change Theta     : ", changeTheta.transpose()
+		#print "Change Theta     : ", changeTheta.transpose()
 
 		thetas = np.add(thetas, changeTheta)
-		print "New Thetas       : ", thetas.transpose()
+		#print "New Thetas       : ", thetas.transpose()
 
 		endEff = getFK(thetas)
 		print "New Position : ", endEff.transpose()	
@@ -213,8 +213,8 @@ def moveArm(thetaInit, goal, deltaTheta, eStep, error, ref, r):
 		dist = getDistance(endEff, goal)		
 		print "Error Allowed : ", error, "Distance : ", dist
 		counter = counter + 1
-	setArmThetas(thetas, ref, r)
-	print "Counter : ", counter
+	
+	#print "Counter : ", counter
 	return thetas
 
 
@@ -233,33 +233,51 @@ ref = ha.HUBO_REF()
 # Get the current feed-forward (state) 
 [statuss, framesizes] = s.get(state, wait=False, last=True)
 	
+#initial Theta values
 thetaInit = np.zeros((6,1))
-goal = np.array([[361.73-10.09298], [154.5], [60.0]])
 
+#loop time = 2 secs
+loop_time = 2.0
+
+print "Starting ...."
 
 #move to TOP LEFT
 newThetas = moveArm(thetaInit, GOAL_TOP_LEFT, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
-print newThetas
-time.sleep(5.0)
+setArmThetas(newThetas, ref, r)
+time.sleep(loop_time)
 
 #move to BOTTOM LEFT
+t0 = time.time()
 newThetas = moveArm(newThetas, GOAL_BOT_LEFT, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
-print newThetas
-time.sleep(5.0)
+t1 = time.time()
+dt = t1-t0
+time.sleep(loop_time-dt)
+setArmThetas(newThetas, ref, r)
 
 #move to BOTTOM RIGHT
+t0 = time.time()
 newThetas = moveArm(newThetas, GOAL_BOT_RIGHT, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
-print newThetas
-time.sleep(5.0)
+t1 = time.time()
+dt = t1-t0
+time.sleep(loop_time-dt)
+setArmThetas(newThetas, ref, r)
 
 #move to TOP RIGHT
+t0 = time.time()
 newThetas = moveArm(newThetas, GOAL_TOP_RIGHT, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
-print newThetas
-time.sleep(5.0)
+t1 = time.time()
+dt = t1-t0
+time.sleep(loop_time-dt)
+setArmThetas(newThetas, ref, r)
 
-#move to TOP RIGHT
+#move to TOP LEFT
+t0 = time.time()
 newThetas = moveArm(newThetas, GOAL_TOP_LEFT, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
-print newThetas
+t1 = time.time()
+dt = t1-t0
+time.sleep(loop_time-dt)
+setArmThetas(newThetas, ref, r)
+
 
 
 
