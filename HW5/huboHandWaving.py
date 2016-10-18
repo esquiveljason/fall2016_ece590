@@ -38,6 +38,9 @@ from ctypes import *
 import math
 import numpy as np
 
+LEFT_ARM = 0
+RIGHT_ARM = 1
+
 #Length of arm components
 LENGTH_BASE_TO_SHOULDER  = 214.5 - 120.0
 LENGTH_SHOULDER_TO_ELBOW = 179.14
@@ -47,15 +50,22 @@ LENGTH_WRIST_TO_FINGER   = 0.0 #placeholder
 #IK Constatns
 DELTA_THETA = 0.01
 ERROR       = 5 # PLACEHOLDER - ERROR FROM GOAL
-ENDEFF_STEP = 4 # PLACEHOLDER - STEP_SIZE
+ENDEFF_STEP = 15 # PLACEHOLDER - STEP_SIZE
 
-#GOALS
+#GOALS LEFT ARM
 GOAL_X_OFFSET = 10.09298
-#TOPLEFT
-GOAL_TOP_LEFT  = np.array([[361.73-GOAL_X_OFFSET], [34.5], [60.0]])
-GOAL_BOT_LEFT  = np.array([[361.73-GOAL_X_OFFSET], [34.5], [-60.0]])
-GOAL_TOP_RIGHT = np.array([[361.73-GOAL_X_OFFSET], [154.5], [60.0]])
-GOAL_BOT_RIGHT = np.array([[361.73-GOAL_X_OFFSET], [154.5], [-60.0]])
+LEFT_GOAL_TOP_LEFT  = np.array([[361.73-GOAL_X_OFFSET], [34.5], [60.0]])
+LEFT_GOAL_BOT_LEFT  = np.array([[361.73-GOAL_X_OFFSET], [34.5], [-60.0]])
+LEFT_GOAL_TOP_RIGHT = np.array([[361.73-GOAL_X_OFFSET], [154.5], [60.0]])
+LEFT_GOAL_BOT_RIGHT = np.array([[361.73-GOAL_X_OFFSET], [154.5], [-60.0]])
+
+#GOALS RIGHT ARM
+
+RIGHT_GOAL_TOP_LEFT  = np.array([[361.73-GOAL_X_OFFSET], [-154.5], [60.0]])
+RIGHT_GOAL_BOT_LEFT  = np.array([[361.73-GOAL_X_OFFSET], [-154.5], [-60.0]])
+RIGHT_GOAL_TOP_RIGHT = np.array([[361.73-GOAL_X_OFFSET], [-34.5], [60.0]])
+RIGHT_GOAL_BOT_RIGHT = np.array([[361.73-GOAL_X_OFFSET], [-34.5], [-60.0]])
+
 
 
 def simSleep(sec, s, state):
@@ -96,11 +106,14 @@ def rZ(theta):
 	return R
 
 
-def getFK(thetas): #theta0, theta1, theta2, ....
+def getFK(whichArm, thetas): #theta0, theta1, theta2, ....
 	
 	#shoulder Pitch
 	T1 = np.identity(4)
-	T1[1,3] = LENGTH_BASE_TO_SHOULDER
+	if(whichArm == LEFT_ARM):
+		T1[1,3] = LENGTH_BASE_TO_SHOULDER
+	elif(whichArm == RIGHT_ARM):
+		T1[1,3] = LENGTH_BASE_TO_SHOULDER * -1.0
 	Q1 = np.dot(rY(thetas[0,0]), T1)
 	
 	#shoulder Roll
@@ -139,14 +152,14 @@ def getFK(thetas): #theta0, theta1, theta2, ....
 	
 	return endEff
 
-def getJacobian(thetas, deltaTheta):
+def getJacobian(whichArm, thetas, deltaTheta):
 	Jac = np.zeros((3,6))
 	for i in range((np.shape(Jac))[0]): #3
 		for j in range((np.shape(Jac))[1]): #6
 			#print "********* ", i,j
 			newThetas = np.copy(thetas)
 			newThetas[j] = thetas[j] + deltaTheta		
-			newEndEff = getFK(newThetas)
+			newEndEff = getFK(whichArm, newThetas)
 			#print newEndEff
 			Jac[i,j] = (newEndEff[i,0] )/ deltaTheta
 	return Jac
@@ -164,38 +177,42 @@ def getNext(endEff, goal, eStep, dist):
 	
 	return deltaEndEff
 	
-def setArmThetas(thetas, ref, r):
+def setArmThetas(leftThetas, rightThetas, ref, r):
 
-	ref.ref[ha.LSP] = thetas[0]
-	ref.ref[ha.LSR] = thetas[1]
-	ref.ref[ha.LSY] = thetas[2]
-	ref.ref[ha.LEB] = thetas[3]
-	ref.ref[ha.LWY] = thetas[4]
-	ref.ref[ha.LWR] = thetas[5]
+	ref.ref[ha.LSP] = leftThetas[0]
+	ref.ref[ha.LSR] = leftThetas[1]
+	ref.ref[ha.LSY] = leftThetas[2]
+	ref.ref[ha.LEB] = leftThetas[3]
+	ref.ref[ha.LWY] = leftThetas[4]
+	ref.ref[ha.LWR] = leftThetas[5]
 
-	#ref.ref[ha.RSP] = thetas[0]
-	#ref.ref[ha.RSR] = thetas[1]
-	#ref.ref[ha.RSY] = thetas[2]
-	#ref.ref[ha.REB] = thetas[3]
-	#ref.ref[ha.RWY] = thetas[4]
-	#ref.ref[ha.RWR] = thetas[5]
+	ref.ref[ha.RSP] = rightThetas[0]
+	ref.ref[ha.RSR] = rightThetas[1]
+	ref.ref[ha.RSY] = rightThetas[2]
+	ref.ref[ha.REB] = rightThetas[3]
+	ref.ref[ha.RWY] = rightThetas[4]
+	ref.ref[ha.RWR] = rightThetas[5]
 
 	r.put(ref)
 
-def moveArm(thetaInit, goal, deltaTheta, eStep, error, ref, r):
+def moveArm(whichArm, thetaInit, goal, deltaTheta, eStep, error, ref, r):
 
-	endEff = getFK(thetaInit)
+	if(whichArm == LEFT_ARM):
+		strArm = "LEFT  ARM "
+	else:
+		strArm = "RIGHT ARM "	
+	endEff = getFK(whichArm, thetaInit)
 	thetas = np.copy(thetaInit)
 	dist = getDistance(endEff, goal)
 	orig_dist = dist
-	print "Goal    Position : ", goal.transpose()
+	print strArm, "Goal    Position : ", goal.transpose()
 	#print "Current Theta    : ", thetas.transpose()
-	print "Current Position : ", endEff.transpose()
-	print "Error Allowed : ", error, "Distance : ", dist
+	print strArm, "Current Position : ", endEff.transpose()
+	print strArm, "Error Allowed : ", error, "Distance : ", dist
 	counter = 0
 	while(dist > error):
-		print "\n\nGoal    Position : ", goal.transpose()
-		Jac = getJacobian(thetas, deltaTheta)
+		print "\nstrArm, Goal    Position : ", goal.transpose()
+		Jac = getJacobian(whichArm, thetas, deltaTheta)
 		invJac = np.linalg.pinv(Jac)
 
 		deltaEndEff = getNext(endEff, goal, eStep, orig_dist)
@@ -207,11 +224,11 @@ def moveArm(thetaInit, goal, deltaTheta, eStep, error, ref, r):
 		thetas = np.add(thetas, changeTheta)
 		#print "New Thetas       : ", thetas.transpose()
 
-		endEff = getFK(thetas)
-		print "New Position : ", endEff.transpose()	
+		endEff = getFK(whichArm, thetas)
+		print strArm, "New Position : ", endEff.transpose()	
 		
 		dist = getDistance(endEff, goal)		
-		print "Error Allowed : ", error, "Distance : ", dist
+		print strArm, "Error Allowed : ", error, "Distance : ", dist
 		counter = counter + 1
 	
 	#print "Counter : ", counter
@@ -234,53 +251,72 @@ ref = ha.HUBO_REF()
 [statuss, framesizes] = s.get(state, wait=False, last=True)
 	
 #initial Theta values
-thetaInit = np.zeros((6,1))
+leftThetaInit = np.zeros((6,1))
+rightThetaInit = np.zeros((6,1))
 
 #loop time = 2 secs
 loop_time = 2.0
 
 print "Starting ...."
 
+
+
 #move to TOP LEFT
-newThetas = moveArm(thetaInit, GOAL_TOP_LEFT, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
-setArmThetas(newThetas, ref, r)
-time.sleep(loop_time)
+newLeftThetas  = moveArm(LEFT_ARM ,  leftThetaInit,  LEFT_GOAL_TOP_LEFT, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
+newRightThetas = moveArm(RIGHT_ARM, rightThetaInit, RIGHT_GOAL_TOP_LEFT, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
+setArmThetas(newLeftThetas, newRightThetas, ref, r)
+print "******* Move to Top Left *******"
+time.sleep(loop_time*2.0)
 
 #move to BOTTOM LEFT
 t0 = time.time()
-newThetas = moveArm(newThetas, GOAL_BOT_LEFT, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
+newLeftThetas  = moveArm(LEFT_ARM ,  newLeftThetas,  LEFT_GOAL_BOT_LEFT, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
+newRightThetas = moveArm(RIGHT_ARM, newRightThetas, RIGHT_GOAL_BOT_LEFT, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
+
 t1 = time.time()
 dt = t1-t0
+
+setArmThetas(newLeftThetas, newRightThetas, ref, r)
+print "******* Move to Bottom Left *******"
+
 time.sleep(loop_time-dt)
-setArmThetas(newThetas, ref, r)
+
+
 
 #move to BOTTOM RIGHT
 t0 = time.time()
-newThetas = moveArm(newThetas, GOAL_BOT_RIGHT, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
+newLeftThetas  = moveArm(LEFT_ARM ,  newLeftThetas,  LEFT_GOAL_BOT_RIGHT, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
+newRightThetas = moveArm(RIGHT_ARM, newRightThetas, RIGHT_GOAL_BOT_RIGHT, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
+
 t1 = time.time()
 dt = t1-t0
+
+setArmThetas(newLeftThetas, newRightThetas, ref, r)
+
+print "******* Move to Bottom Right *******"
 time.sleep(loop_time-dt)
-setArmThetas(newThetas, ref, r)
 
 #move to TOP RIGHT
 t0 = time.time()
-newThetas = moveArm(newThetas, GOAL_TOP_RIGHT, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
+newLeftThetas  = moveArm( LEFT_ARM,  newLeftThetas,  LEFT_GOAL_TOP_RIGHT, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
+newRightThetas = moveArm(RIGHT_ARM, newRightThetas, RIGHT_GOAL_TOP_RIGHT, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
+
 t1 = time.time()
 dt = t1-t0
+
+setArmThetas(newLeftThetas, newRightThetas, ref, r)
+print "******* Move to Top Right *******"
+
 time.sleep(loop_time-dt)
-setArmThetas(newThetas, ref, r)
 
 #move to TOP LEFT
-t0 = time.time()
-newThetas = moveArm(newThetas, GOAL_TOP_LEFT, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
-t1 = time.time()
-dt = t1-t0
-time.sleep(loop_time-dt)
-setArmThetas(newThetas, ref, r)
 
+newLeftThetas  = moveArm( LEFT_ARM,  newLeftThetas,  LEFT_GOAL_TOP_LEFT, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
+newRightThetas = moveArm(RIGHT_ARM, newRightThetas, RIGHT_GOAL_TOP_LEFT, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
 
+setArmThetas(newLeftThetas, newRightThetas, ref, r)
 
-
+print "******* Move to Top Left *******"
 
 
 
