@@ -46,8 +46,17 @@ LENGTH_WRIST_TO_FINGER   = 0.0 #placeholder
 
 #IK Constatns
 DELTA_THETA = 0.01
-ERROR       = 4 # PLACEHOLDER - ERROR FROM GOAL
+ERROR       = 5 # PLACEHOLDER - ERROR FROM GOAL
 ENDEFF_STEP = 2 # PLACEHOLDER - STEP_SIZE
+
+#GOALS
+GOAL_X_OFFSET = 10.09298
+#TOPLEFT
+GOAL_TOP_LEFT  = np.array([[361.73-GOAL_X_OFFSET], [34.5], [60.0]])
+GOAL_BOT_LEFT  = np.array([[361.73-GOAL_X_OFFSET], [34.5], [-60.0]])
+GOAL_TOP_RIGHT = np.array([[361.73-GOAL_X_OFFSET], [154.5], [60.0]])
+GOAL_BOT_RIGHT = np.array([[361.73-GOAL_X_OFFSET], [154.5], [-60.0]])
+
 
 def simSleep(sec, s, state):
 	tick = state.time;
@@ -164,12 +173,12 @@ def setArmThetas(thetas, ref, r):
 	ref.ref[ha.LWY] = thetas[4]
 	ref.ref[ha.LWR] = thetas[5]
 
-	ref.ref[ha.RSP] = thetas[0]
-	ref.ref[ha.RSR] = thetas[1]
-	ref.ref[ha.RSY] = thetas[2]
-	ref.ref[ha.REB] = thetas[3]
-	ref.ref[ha.RWY] = thetas[4]
-	ref.ref[ha.RWR] = thetas[5]
+	#ref.ref[ha.RSP] = thetas[0]
+	#ref.ref[ha.RSR] = thetas[1]
+	#ref.ref[ha.RSY] = thetas[2]
+	#ref.ref[ha.REB] = thetas[3]
+	#ref.ref[ha.RWY] = thetas[4]
+	#ref.ref[ha.RWR] = thetas[5]
 
 	r.put(ref)
 
@@ -225,10 +234,36 @@ ref = ha.HUBO_REF()
 [statuss, framesizes] = s.get(state, wait=False, last=True)
 	
 thetaInit = np.zeros((6,1))
-goal = np.array([[361.73], [94.5], [0.0]])
-init = np.array([[0.0], [94.5], [-370.73]])
+goal = np.array([[361.73-10.09298], [154.5], [60.0]])
 
-print moveArm(thetaInit, goal, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
+
+#move to TOP LEFT
+newThetas = moveArm(thetaInit, GOAL_TOP_LEFT, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
+print newThetas
+time.sleep(5.0)
+
+#move to BOTTOM LEFT
+newThetas = moveArm(newThetas, GOAL_BOT_LEFT, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
+print newThetas
+time.sleep(5.0)
+
+#move to BOTTOM RIGHT
+newThetas = moveArm(newThetas, GOAL_BOT_RIGHT, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
+print newThetas
+time.sleep(5.0)
+
+#move to TOP RIGHT
+newThetas = moveArm(newThetas, GOAL_TOP_RIGHT, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
+print newThetas
+time.sleep(5.0)
+
+#move to TOP RIGHT
+newThetas = moveArm(newThetas, GOAL_TOP_LEFT, DELTA_THETA, ENDEFF_STEP, ERROR, ref, r)
+print newThetas
+
+
+
+
 
 
 
